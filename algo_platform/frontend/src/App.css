@@ -1061,6 +1061,130 @@ h2 {
   border-color: #4f46e5;
 }
 
+/* ── Roadmap Graph container ── */
+.roadmap-graph {
+  width: 100%;
+  height: 600px;
+  margin-top: 28px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  box-shadow: 0 4px 24px rgba(79, 70, 229, 0.07);
+}
+
+.roadmap-graph-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 320px;
+  margin-top: 28px;
+  border-radius: 16px;
+  border: 2px dashed #c7d2fe;
+  background: #fafbff;
+  color: #94a3b8;
+}
+
+.roadmap-graph-empty__icon {
+  font-size: 40px;
+  color: #c7d2fe;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.roadmap-graph-empty p {
+  font-size: 16px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+
+.roadmap-graph-empty span {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+/* ── React Flow custom node card ── */
+.rf-node {
+  width: 270px;
+  min-height: 120px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1.5px solid #e0e7ff;
+  border-left: 4px solid #4f46e5;
+  box-shadow: 0 2px 16px rgba(79, 70, 229, 0.10);
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.rf-node:hover {
+  box-shadow: 0 6px 28px rgba(79, 70, 229, 0.18);
+  border-color: #818cf8;
+  border-left-color: #4f46e5;
+}
+
+.rf-node__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+  letter-spacing: -0.1px;
+}
+
+.rf-node__desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.rf-node__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.rf-node__problem-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: #ede9fe;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid #c4b5fd;
+  transition: background 0.15s, color 0.15s;
+  align-self: flex-start;
+}
+
+.rf-node__problem-link::before { content: "→"; }
+
+.rf-node__problem-link:hover {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+
+/* hide React Flow default handle dots */
+.rf-handle {
+  background: transparent !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -1,34 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import RoadmapGraph from "../components/RoadmapGraph";
 
 const EMPTY_NODE = { title: "", description: "", parent: "", problem_ids: [] };
-
-const TreeNode = ({ node, depth = 0 }) => (
-  <div className="rm-node" style={{ marginLeft: depth * 28 }}>
-    <div className="rm-node__card">
-      <div className="rm-node__title">{node.title}</div>
-      {node.description && <div className="rm-node__desc">{node.description}</div>}
-      {node.problems?.length > 0 && (
-        <div className="rm-node__problems">
-          {node.problems.map((p) => (
-            <Link key={p.id} to={`/problems/${p.id}`} className="rm-node__problem-link">
-              {p.title}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-    {node.children?.length > 0 && (
-      <div className="rm-node__children">
-        {node.children.map((child) => (
-          <TreeNode key={child.id} node={child} depth={depth + 1} />
-        ))}
-      </div>
-    )}
-  </div>
-);
 
 const RoadmapDetailPage = () => {
   const { id } = useParams();
@@ -113,7 +89,7 @@ const RoadmapDetailPage = () => {
         {isAuthor && (
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
-              {showForm ? "Отмена" : "+ Добавить узел"}
+              {showForm ? "✕ Отмена" : "+ Добавить узел"}
             </button>
             <button className="btn-danger" onClick={handleDelete}>Удалить</button>
           </div>
@@ -165,7 +141,10 @@ const RoadmapDetailPage = () => {
                 {allProblems.map((p) => {
                   const checked = nodeForm.problem_ids.includes(p.id);
                   return (
-                    <label key={p.id} className={`rm-problem-chip ${checked ? "rm-problem-chip--active" : ""}`}>
+                    <label
+                      key={p.id}
+                      className={`rm-problem-chip ${checked ? "rm-problem-chip--active" : ""}`}
+                    >
                       <input
                         type="checkbox"
                         checked={checked}
@@ -192,18 +171,7 @@ const RoadmapDetailPage = () => {
         </form>
       )}
 
-      <div className="roadmap-detail__tree">
-        {roadmap.nodes?.length === 0 ? (
-          <div className="roadmap-detail__empty">
-            <p>Узлов пока нет.</p>
-            {isAuthor && <p>Нажмите «+ Добавить узел» чтобы начать строить карту.</p>}
-          </div>
-        ) : (
-          roadmap.nodes.map((node) => (
-            <TreeNode key={node.id} node={node} depth={0} />
-          ))
-        )}
-      </div>
+      <RoadmapGraph treeNodes={roadmap.nodes || []} />
     </div>
   );
 };
