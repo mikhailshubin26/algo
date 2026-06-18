@@ -6,6 +6,7 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
+      <Link to="/" className="navbar__logo">AlgoPlatform</Link>
       <div className="navbar__links">
         <Link to="/">Задачи</Link>
         <Link to="/roadmaps">Дорожные карты</Link>
@@ -15,14 +16,12 @@ const Navbar = () => {
       <div className="navbar__user">
         {user ? (
           <>
-            <span>
-              {user.username} ({user.role})
-            </span>
+            <span>{user.username}</span>
             <button onClick={logout}>Выйти</button>
           </>
         ) : (
           <>
-            <Link to="/login">Вход</Link>
+            <Link to="/login">Войти</Link>
             <Link to="/register">Регистрация</Link>
           </>
         )}

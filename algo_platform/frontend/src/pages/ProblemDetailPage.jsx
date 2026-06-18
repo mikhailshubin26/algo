@@ -40,11 +40,15 @@ const ProblemDetailPage = () => {
 
   if (!problem) return <p>Загрузка...</p>;
 
+  const DIFFICULTY_LABEL = { easy: "Easy", medium: "Medium", hard: "Hard" };
+
   return (
     <div className="problem-page">
       <div className="problem-page__statement">
         <h2>{problem.title}</h2>
-        <p className="problem-page__difficulty">{problem.difficulty}</p>
+        <span className={`problem-card__difficulty problem-card__difficulty--${problem.difficulty} problem-page__difficulty-badge`}>
+          {DIFFICULTY_LABEL[problem.difficulty]}
+        </span>
         <p>{problem.description}</p>
         <h4>Ограничения</h4>
         <p>{problem.constraints}</p>
@@ -60,18 +64,20 @@ const ProblemDetailPage = () => {
           ))}
         </select>
         <Editor
-          height="60vh"
+          height="55vh"
           language={LANGUAGES.find((lang) => lang.value === language).monaco}
           value={code}
           onChange={(value) => setCode(value ?? "")}
           theme="vs-dark"
+          options={{ fontSize: 14, minimap: { enabled: false }, scrollBeyondLastLine: false }}
         />
         <button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Отправка..." : "Отправить решение"}
+          {submitting ? "Проверяется..." : "Отправить решение"}
         </button>
         {result && (
           <div className={`problem-page__result problem-page__result--${result.verdict.toLowerCase()}`}>
-            Вердикт: {result.verdict} ({result.tests_passed} тестов пройдено)
+            {result.verdict === "AC" ? "✓" : "✗"} {result.verdict} — {result.tests_passed} / {problem.total_tests} тестов
+            {result.exec_time_ms && <span style={{marginLeft:12, fontWeight:400, opacity:0.8}}>{result.exec_time_ms} мс</span>}
           </div>
         )}
       </div>
