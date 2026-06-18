@@ -751,6 +751,316 @@ h2 {
   background: #f8fafc;
 }
 
+/* ── Roadmaps Grid ── */
+.roadmaps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.roadmap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
+}
+
+.roadmap-card:hover {
+  box-shadow: 0 8px 24px rgba(15,23,42,0.1);
+  transform: translateY(-2px);
+  border-color: #c7d2fe;
+}
+
+.roadmap-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.roadmap-card__desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.roadmap-card__meta {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: auto;
+}
+
+/* ── Roadmap Detail ── */
+.roadmap-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  gap: 16px;
+}
+
+.roadmap-detail__desc {
+  color: #64748b;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.roadmap-detail__badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.roadmap-detail__tree {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roadmap-detail__empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: #94a3b8;
+  background: #fff;
+  border: 1px dashed #e2e8f0;
+  border-radius: 12px;
+}
+
+/* ── Tree Nodes ── */
+.rm-node {
+  position: relative;
+}
+
+.rm-node__card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.rm-node__card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.08);
+}
+
+.rm-node__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.rm-node__desc {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.rm-node__children {
+  margin-top: 8px;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 2px solid #e2e8f0;
+  margin-left: 20px;
+  padding-left: 16px;
+  margin-top: 10px;
+}
+
+/* ── Add Node Form ── */
+.rm-add-node-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid #e0e7ff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.08);
+}
+
+.rm-add-node-form h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #4f46e5;
+  margin: 0;
+}
+
+.rm-add-node-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.rm-add-node-form input,
+.rm-add-node-form textarea,
+.rm-add-node-form select {
+  padding: 9px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  background: #f8fafc;
+}
+
+.rm-add-node-form input:focus,
+.rm-add-node-form textarea:focus,
+.rm-add-node-form select:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129,140,248,0.2);
+  background: #fff;
+}
+
+.btn-secondary {
+  padding: 9px 22px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-secondary:hover { background: #e2e8f0; }
+
+.btn-submit {
+  padding: 9px 22px;
+  border-radius: 8px;
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-submit:hover:not(:disabled) { background: #4338ca; }
+.btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-danger {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fff;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-danger:hover { background: #fee2e2; }
+
+/* ── Roadmap node: problem links ── */
+.rm-node__problems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.rm-node__problem-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #ede9fe;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid #c4b5fd;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rm-node__problem-link::before {
+  content: "→";
+  font-size: 11px;
+}
+
+.rm-node__problem-link:hover {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+
+/* ── Problem picker (checkboxes as chips) ── */
+.rm-problem-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rm-problem-picker__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.rm-problem-picker__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.rm-problem-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.rm-problem-chip:hover {
+  border-color: #818cf8;
+  color: #4f46e5;
+  background: #eef2ff;
+}
+
+.rm-problem-chip--active {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

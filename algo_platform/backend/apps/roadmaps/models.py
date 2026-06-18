@@ -43,6 +43,9 @@ class RoadmapNode(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
+    problems = models.ManyToManyField(
+        "problems.Problem", blank=True, related_name="roadmap_nodes"
+    )
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
