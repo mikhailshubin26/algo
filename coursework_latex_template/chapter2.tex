@@ -1,0 +1,511 @@
+\section*{Глава 2. Проектирование веб-приложения}
+\addcontentsline{toc}{section}{Глава 2. Проектирование веб-приложения}
+\stepcounter{section}
+
+
+\subsection{Анализ целевой аудитории}
+
+Основными пользователями разрабатываемой системы являются лица, заинтересованные
+в развитии навыков алгоритмического программирования. Выделяются три ключевые роли:
+
+\begin{itemize}
+	\item \textbf{Пользователь} --- зарегистрированный участник платформы,
+	      имеющий доступ к базовому функционалу: решению и созданию задач,
+	      прохождению дорожных карт, участию в турнирах и общению в личных
+	      сообщениях.
+	\item \textbf{Премиум-пользователь} --- участник с расширенной подпиской,
+	      которому дополнительно доступен ИИ-ассистент на странице задачи
+	      для получения подсказок и разбора решений.
+	\item \textbf{Администратор} --- сотрудник платформы, осуществляющий
+	      модерацию контента: блокировку пользователей, удаление задач
+	      и дорожных карт.
+\end{itemize}
+
+Для каждой роли проведено профилирование по методу персонажей (Personas) для
+минимизации когнитивной нагрузки на интерфейс.
+
+\subsection{Описание функциональности приложения}
+
+Функциональные возможности системы определяются через взаимодействие пользователя
+с системой. Основной бизнес-кейс представлен в виде \textit{User Story}: «Я, как
+пользователь, хочу выбрать алгоритмическую задачу и отправить решение на проверку,
+чтобы получить мгновенную обратную связь по корректности и эффективности кода».
+
+Платформа реализует следующие ключевые функциональные блоки:
+
+\begin{itemize}
+	\item \textbf{Задачи.} Каждая задача содержит название, текстовое описание,
+	      ограничения по времени и памяти, примеры ввода-вывода и уровень
+	      сложности (Easy, Medium, Hard), задаваемый автором. Для проверки
+	      решений автор загружает закрытый набор тестов, недоступный решающему.
+	      На странице задачи расположена встроенная IDE с поддержкой языков
+	      Python, C++, C, Go и Java; решение можно отправить как из редактора,
+	      так и в виде прикреплённого файла.
+	\item \textbf{ИИ-ассистент.} Премиум-пользователям на странице задачи
+	      доступен чат-ассистент на базе Deepseek API. Ассистент направляет
+	      пользователя к решению, не раскрывая его напрямую, а также анализирует
+	      уже отправленный код и даёт рекомендации по улучшению.
+	\item \textbf{Дорожные карты (Roadmaps).} Дорожная карта представляет собой
+	      ориентированное дерево, каждый узел которого содержит название,
+	      текстовое описание и ссылки на связанные задачи. Пользователи могут
+	      проходить готовые дорожные карты или создавать собственные.
+	\item \textbf{Турниры.} Соревнование состоит из 5 этапов по 3 задачи
+	      в каждом; на прохождение одного этапа отводится до 5 минут.
+	      По результатам участия обновляется турнирный рейтинг пользователя.
+	\item \textbf{Личные сообщения.} Пользователи могут общаться друг с другом
+	      в режиме реального времени через встроенный чат.
+\end{itemize}
+
+На рисунке~\ref{fig:image-4} представлена диаграмма вариантов использования
+(Use Case).
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{image-4}
+	\caption{Диаграмма вариантов использования системы}
+	\label{fig:image-4}
+\end{figure}
+
+\subsection{Проектирование модели данных}
+
+При выборе архитектуры базы данных был проведён сравнительный анализ эффективности
+различных решений, опирающийся на данные о производительности современных
+СУБД~\cite{petrov2024}.
+
+Модель данных системы включает следующие основные сущности: пользователи
+(\texttt{users}), задачи (\texttt{problems}), посылки (\texttt{submissions}),
+дорожные карты (\texttt{roadmaps}) и их узлы (\texttt{roadmap\_nodes}),
+турниры (\texttt{tournaments}) и участие в них (\texttt{tournament\_participants}),
+а также личные сообщения (\texttt{messages}).
+
+Структура таблицы пользователей представлена в табл.~\ref{tab:db_users}.
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы пользователей (\texttt{users})} \label{tab:db_users} \\
+
+	\hline
+	\textbf{Поле}      & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_users}}
+	\textbf{Поле}      & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id                 & UUID         & PRIMARY KEY          & Уникальный идентификатор пользователя    \\ \hline
+	username           & VARCHAR      & UNIQUE, NOT NULL     & Логин пользователя                       \\ \hline
+	email              & VARCHAR      & UNIQUE, NOT NULL     & Электронная почта                        \\ \hline
+	password\_hash     & TEXT         & NOT NULL             & Хэш пароля                               \\ \hline
+	role               & VARCHAR      & DEFAULT 'user'       & Роль (user, premium, admin)              \\ \hline
+	is\_blocked        & BOOLEAN      & DEFAULT FALSE        & Признак блокировки аккаунта              \\ \hline
+	tournament\_rating & INT          & DEFAULT 0            & Накопленный турнирный рейтинг            \\ \hline
+	streak             & INT          & DEFAULT 0            & Текущая серия активных дней              \\ \hline
+	last\_active\_date & DATE         & NULL                 & Дата последней активности                \\ \hline
+	created\_at        & TIMESTAMP    & DEFAULT NOW()        & Дата регистрации                         \\ \hline
+\end{longtable}
+
+Серия активных дней (\textit{streak}) фиксирует количество календарных дней подряд,
+в течение которых пользователь совершал хотя бы одно действие на платформе
+(отправку решения, прохождение узла дорожной карты или участие в турнире).
+При каждом входе система сравнивает текущую дату с полем \texttt{last\_active\_date}:
+если разница составляет ровно один день, счётчик \texttt{streak} увеличивается на 1;
+если разница превышает один день, счётчик сбрасывается до 1; если пользователь уже
+был активен сегодня, счётчик остаётся без изменений.
+
+Структура таблицы задач представлена в табл.~\ref{tab:db_problems}.
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы задач (\texttt{problems})} \label{tab:db_problems} \\
+
+	\hline
+	\textbf{Поле}     & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_problems}}
+	\textbf{Поле}     & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id                & UUID         & PRIMARY KEY          & Уникальный идентификатор задачи          \\ \hline
+	author\_id        & UUID         & FOREIGN KEY          & Ссылка на таблицу пользователей          \\ \hline
+	title             & VARCHAR      & NOT NULL             & Название задачи                          \\ \hline
+	description       & TEXT         & NOT NULL             & Условие задачи                           \\ \hline
+	constraints       & TEXT         & NOT NULL             & Ограничения по времени и памяти          \\ \hline
+	difficulty        & VARCHAR      & NOT NULL             & Уровень сложности (Easy / Medium / Hard) \\ \hline
+	test\_file\_path  & TEXT         & NOT NULL             & Путь к закрытому набору тестов           \\ \hline
+	total\_tests      & INT          & NOT NULL             & Общее количество тестов                  \\ \hline
+	time\_limit\_ms   & INT          & DEFAULT 1000         & Ограничение по времени, мс               \\ \hline
+	memory\_limit\_mb & INT          & DEFAULT 256          & Ограничение по памяти, МБ                \\ \hline
+	status            & VARCHAR      & DEFAULT 'active'     & Статус (активна, удалена)                \\ \hline
+	created\_at       & TIMESTAMP    & DEFAULT NOW()        & Время создания записи                    \\ \hline
+	updated\_at       & TIMESTAMP    & DEFAULT NOW()        & Время последнего изменения               \\ \hline
+\end{longtable}
+
+Структура таблицы посылок представлена в табл.~\ref{tab:db_submissions}.
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы посылок (\texttt{submissions})} \label{tab:db_submissions} \\
+
+	\hline
+	\textbf{Поле}    & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_submissions}}
+	\textbf{Поле}    & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id               & UUID         & PRIMARY KEY          & Уникальный идентификатор посылки         \\ \hline
+	user\_id         & UUID         & FOREIGN KEY          & Ссылка на пользователя                   \\ \hline
+	problem\_id      & UUID         & FOREIGN KEY          & Ссылка на задачу                         \\ \hline
+	tournament\_id   & UUID         & NULL                 & Ссылка на турнир (если в рамках турнира) \\ \hline
+	language         & VARCHAR      & NOT NULL             & Язык программирования                    \\ \hline
+	source\_code     & TEXT         & NOT NULL             & Исходный код решения                     \\ \hline
+	tests\_passed    & INT          & DEFAULT 0            & Количество пройденных тестов             \\ \hline
+	is\_accepted     & BOOLEAN      & DEFAULT FALSE        & Признак полного прохождения тестов       \\ \hline
+	verdict          & VARCHAR      & NOT NULL             & Вердикт (AC, WA, TLE, MLE, CE и др.)    \\ \hline
+	exec\_time\_ms   & INT          & NULL                 & Время выполнения, мс                     \\ \hline
+	memory\_kb       & INT          & NULL                 & Использованная память, КБ                \\ \hline
+	submitted\_at    & TIMESTAMP    & DEFAULT NOW()        & Время отправки                           \\ \hline
+\end{longtable}
+
+Вне контекста турнира задача считается решённой, если хотя бы одна из посылок
+пользователя по данной задаче имеет признак \texttt{is\_accepted = TRUE}, то есть
+прошла все тесты (\texttt{tests\_passed = total\_tests}). Это условие проверяется
+на уровне приложения при каждой новой посылке и фиксируется булевым флагом,
+чтобы исключить повторный пересчёт.
+
+Структура таблицы дорожных карт и их узлов представлена
+в табл.~\ref{tab:db_roadmaps} и~\ref{tab:db_roadmap_nodes} соответственно.
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы дорожных карт (\texttt{roadmaps})} \label{tab:db_roadmaps} \\
+
+	\hline
+	\textbf{Поле}  & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_roadmaps}}
+	\textbf{Поле}  & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id             & UUID         & PRIMARY KEY          & Уникальный идентификатор дорожной карты  \\ \hline
+	author\_id     & UUID         & FOREIGN KEY          & Ссылка на автора                         \\ \hline
+	title          & VARCHAR      & NOT NULL             & Название дорожной карты                  \\ \hline
+	description    & TEXT         & NULL                 & Описание дорожной карты                  \\ \hline
+	is\_public     & BOOLEAN      & DEFAULT TRUE         & Признак публичности                      \\ \hline
+	status         & VARCHAR      & DEFAULT 'active'     & Статус (активна, удалена)                \\ \hline
+	created\_at    & TIMESTAMP    & DEFAULT NOW()        & Время создания                           \\ \hline
+\end{longtable}
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы узлов дорожной карты (\texttt{roadmap\_nodes})} \label{tab:db_roadmap_nodes} \\
+
+	\hline
+	\textbf{Поле}    & \textbf{Тип}  & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_roadmap_nodes}}
+	\textbf{Поле}    & \textbf{Тип}  & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id               & UUID          & PRIMARY KEY          & Уникальный идентификатор узла            \\ \hline
+	roadmap\_id      & UUID          & FOREIGN KEY          & Ссылка на дорожную карту                 \\ \hline
+	parent\_id       & UUID          & NULL                 & Ссылка на родительский узел (NULL у корня) \\ \hline
+	title            & VARCHAR       & NOT NULL             & Название узла                            \\ \hline
+	description      & TEXT          & NULL                 & Текстовое описание узла                  \\ \hline
+	position         & INT           & NOT NULL             & Порядок отображения среди дочерних узлов \\ \hline
+	created\_at      & TIMESTAMP     & DEFAULT NOW()        & Время создания                           \\ \hline
+\end{longtable}
+
+Структура таблиц турниров и участников представлена
+в табл.~\ref{tab:db_tournaments} и~\ref{tab:db_tournament_participants}.
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы турниров (\texttt{tournaments})} \label{tab:db_tournaments} \\
+
+	\hline
+	\textbf{Поле}    & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_tournaments}}
+	\textbf{Поле}    & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id               & UUID         & PRIMARY KEY          & Уникальный идентификатор турнира         \\ \hline
+	creator\_id      & UUID         & FOREIGN KEY          & Ссылка на создателя турнира              \\ \hline
+	title            & VARCHAR      & NOT NULL             & Название турнира                         \\ \hline
+	stages\_count    & INT          & DEFAULT 5            & Количество этапов (фиксировано: 5)       \\ \hline
+	problems\_per\_stage & INT      & DEFAULT 3            & Задач в одном этапе (фиксировано: 3)     \\ \hline
+	stage\_duration\_s   & INT      & DEFAULT 300          & Длительность этапа, секунд               \\ \hline
+	status           & VARCHAR      & DEFAULT 'pending'    & Статус (ожидание, идёт, завершён)        \\ \hline
+	started\_at      & TIMESTAMP    & NULL                 & Время начала турнира                     \\ \hline
+	finished\_at     & TIMESTAMP    & NULL                 & Время завершения турнира                 \\ \hline
+	created\_at      & TIMESTAMP    & DEFAULT NOW()        & Время создания записи                    \\ \hline
+\end{longtable}
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы участников турнира (\texttt{tournament\_participants})} \label{tab:db_tournament_participants} \\
+
+	\hline
+	\textbf{Поле}      & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_tournament_participants}}
+	\textbf{Поле}      & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id                 & UUID         & PRIMARY KEY          & Уникальный идентификатор записи          \\ \hline
+	tournament\_id     & UUID         & FOREIGN KEY          & Ссылка на турнир                         \\ \hline
+	user\_id           & UUID         & FOREIGN KEY          & Ссылка на пользователя                   \\ \hline
+	total\_score       & INT          & DEFAULT 0            & Суммарный балл по всем этапам            \\ \hline
+	current\_stage     & INT          & DEFAULT 1            & Текущий этап участника                   \\ \hline
+	joined\_at         & TIMESTAMP    & DEFAULT NOW()        & Время присоединения к турниру            \\ \hline
+\end{longtable}
+
+Структура таблицы личных сообщений представлена в табл.~\ref{tab:db_messages}.
+
+\begin{longtable}{|l|l|p{3.5cm}|p{5.5cm}|}
+	\caption{Структура таблицы личных сообщений (\texttt{messages})} \label{tab:db_messages} \\
+
+	\hline
+	\textbf{Поле}  & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endfirsthead
+
+	\tabcont{\ref{tab:db_messages}}
+	\textbf{Поле}  & \textbf{Тип} & \textbf{Ограничение} & \textbf{Описание}                        \\ \hline
+	\endhead
+
+	\hline
+	\endfoot
+
+	\hline
+	\endlastfoot
+
+	id             & UUID         & PRIMARY KEY          & Уникальный идентификатор сообщения       \\ \hline
+	sender\_id     & UUID         & FOREIGN KEY          & Ссылка на отправителя                    \\ \hline
+	receiver\_id   & UUID         & FOREIGN KEY          & Ссылка на получателя                     \\ \hline
+	content        & TEXT         & NOT NULL             & Текст сообщения                          \\ \hline
+	is\_read       & BOOLEAN      & DEFAULT FALSE        & Признак прочтения                        \\ \hline
+	sent\_at       & TIMESTAMP    & DEFAULT NOW()        & Время отправки                           \\ \hline
+\end{longtable}
+
+Количество баллов, начисляемых пользователю за решение задачи в рамках турнира,
+определяется следующим образом:
+
+\begin{equation}
+	S = \frac{T_{passed}}{T_{total}} \cdot 100,
+	\label{eq:score}
+\end{equation}
+
+\begin{where}
+	\item $T_{passed}$~--- количество пройденных тестов;
+	\item $T_{total}$~--- общее количество тестов в задаче.
+\end{where}
+
+Итоговый турнирный рейтинг пользователя по результатам турнира складывается
+из суммы баллов, набранных за все решённые задачи:
+
+\begin{equation}
+	R = \sum_{j=1}^{M} S_j,
+	\label{eq:rating}
+\end{equation}
+
+\begin{where}
+	\item $M$~--- количество задач, по которым пользователь отправил решение;
+	\item $S_j$~--- балл за $j$-ю задачу, рассчитанный по формуле~\eqref{eq:score}.
+\end{where}
+
+Описанные таблицы и связи между ними образуют логическую модель данных
+системы. На рисунке~\ref{fig:er_diagram} представлена ER-диаграмма базы
+данных, отражающая состав сущностей, их ключевые атрибуты, а также типы
+связей между таблицами.
+
+\begin{landscape}
+\begin{figure}[p]
+	\centering
+	\begin{tikzpicture}[
+			scale=0.78,
+			entity/.style={
+					draw, rectangle, align=left,
+					font=\footnotesize, inner sep=4pt, fill=white
+				},
+			every node/.style={transform shape},
+			rel/.style={-{Triangle[length=2mm,width=1.5mm]}, thick},
+			relabel/.style={font=\scriptsize, fill=white, inner sep=1pt}
+		]
+
+		% --- Сущности ---
+		\node[entity] (users) at (9,18)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{users}                  \\
+				\midrule
+				\underline{id}: UUID (PK)       \\
+				username: VARCHAR               \\
+				email: VARCHAR                  \\
+				role: VARCHAR                   \\
+				tournament\_rating: INT         \\
+				streak: INT
+			\end{tabular}};
+
+		\node[entity] (problems) at (0,18)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{problems}                \\
+				\midrule
+				\underline{id}: UUID (PK)        \\
+				author\_id: UUID (FK)            \\
+				title: VARCHAR                   \\
+				difficulty: VARCHAR
+			\end{tabular}};
+
+		\node[entity] (roadmaps) at (0,11)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{roadmaps}                \\
+				\midrule
+				\underline{id}: UUID (PK)        \\
+				author\_id: UUID (FK)            \\
+				title: VARCHAR                   \\
+				is\_public: BOOLEAN
+			\end{tabular}};
+
+		\node[entity] (roadmap_nodes) at (0,3)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{roadmap\_nodes}          \\
+				\midrule
+				\underline{id}: UUID (PK)        \\
+				roadmap\_id: UUID (FK)           \\
+				parent\_id: UUID (FK)            \\
+				title: VARCHAR                   \\
+				position: INT
+			\end{tabular}};
+
+		\node[entity] (tournaments) at (18,18)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{tournaments}             \\
+				\midrule
+				\underline{id}: UUID (PK)        \\
+				creator\_id: UUID (FK)           \\
+				title: VARCHAR                   \\
+				status: VARCHAR
+			\end{tabular}};
+
+		\node[entity] (messages) at (18,11)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{messages}                \\
+				\midrule
+				\underline{id}: UUID (PK)        \\
+				sender\_id: UUID (FK)            \\
+				receiver\_id: UUID (FK)          \\
+				content: TEXT
+			\end{tabular}};
+
+		\node[entity] (tournament_participants) at (18,3)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{tournament\_participants} \\
+				\midrule
+				\underline{id}: UUID (PK)         \\
+				tournament\_id: UUID (FK)         \\
+				user\_id: UUID (FK)               \\
+				total\_score: INT
+			\end{tabular}};
+
+		\node[entity] (submissions) at (9,3)
+		{\begin{tabular}{@{}l@{}}
+				\textbf{submissions}              \\
+				\midrule
+				\underline{id}: UUID (PK)         \\
+				user\_id: UUID (FK)               \\
+				problem\_id: UUID (FK)            \\
+				tournament\_id: UUID (FK)         \\
+				verdict: VARCHAR
+			\end{tabular}};
+
+		% --- Связи ---
+		\draw[rel] (users.west) -- (problems.east) node[relabel, midway] {1:N};
+		\draw[rel] (users.east) -- (tournaments.west) node[relabel, midway] {1:N};
+
+		\draw[rel] (users.225) to[out=200, in=80] node[relabel, pos=0.15] {1:N} (roadmaps.north east);
+
+		\draw[rel] (users.270) -- (submissions.north) node[relabel, midway] {1:N};
+
+		\draw[rel] (users.east) to[out=-20, in=110] node[relabel, pos=0.3] {1:N} (messages.north);
+
+		\draw[rel] (users.315) to[out=-40, in=130] node[relabel, pos=0.8] {1:N} (tournament_participants.north west);
+
+		\draw[rel] (problems.south) to[out=-90, in=140] node[relabel, pos=0.15] {1:N} (submissions.north west);
+		\draw[rel] (tournaments.south) to[out=-90, in=40] node[relabel, pos=0.15] {1:N} (submissions.north east);
+		\draw[rel] (tournaments.east) to[out=0, in=0] node[relabel, pos=0.5, right] {1:N} (tournament_participants.east);
+		\draw[rel] (roadmaps.south) -- (roadmap_nodes.north) node[relabel, midway] {1:N};
+
+		\draw[rel] (roadmap_nodes.north east) to[out=30, in=-30, looseness=8] node[relabel, right=2pt] {1:N} (roadmap_nodes.east);
+
+	\end{tikzpicture}
+	\caption{ER-диаграмма базы данных системы}
+	\label{fig:er_diagram}
+\end{figure}
+\end{landscape}
+
+\subsection{Разработка макетов страниц}
+
+Макеты страниц:
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{image-1}
+	\caption{Страница авторизации}
+	\label{fig:image-1}
+\end{figure}
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{image-3}
+	\caption{Страница авторизации}
+	\label{fig:image-3}
+\end{figure}
+
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{image-5}
+	\caption{Главаная страница}
+	\label{fig:image-5}
+\end{figure}

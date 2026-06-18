@@ -1,0 +1,373 @@
+\section*{Глава 3. Разработка веб-приложения}
+\addcontentsline{toc}{section}{Глава 3. Разработка веб-приложения}
+\stepcounter{section}
+
+\subsection{Архитектура приложения и структура проекта}
+
+В соответствии с архитектурой, спроектированной в главе 2, приложение
+реализовано как клиент-серверная система, состоящая из трёх компонентов:
+клиентского приложения на \textbf{React.js}, серверного приложения на
+\textbf{Django} с REST API (\textit{Django REST Framework}) и СУБД
+\textbf{PostgreSQL}. Для упрощения развёртывания и обеспечения
+одинакового окружения на всех этапах разработки компоненты системы
+оформлены в виде отдельных контейнеров \textbf{Docker}, объединённых
+файлом \texttt{docker-compose.yml} (листинг~\ref{lst:compose}).
+
+\begin{lstlisting}[language=, caption={Конфигурация контейнеров проекта (docker-compose.yml)}, label={lst:compose}]
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: algo_platform
+      POSTGRES_USER: algo_platform
+      POSTGRES_PASSWORD: algo_platform
+
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    depends_on: [db, redis]
+    ports: ["8000:8000"]
+
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    depends_on: [backend]
+\end{lstlisting}
+
+Серверная часть разделена на отдельные Django-приложения, каждое из
+которых отвечает за одну группу сущностей логической модели данных,
+описанной в главе 2: \texttt{users}, \texttt{problems},
+\texttt{submissions}, \texttt{roadmaps}, \texttt{tournaments},
+\texttt{messaging} и \texttt{ai\_assistant}. Такое разделение
+соответствует принципу единственной ответственности и позволяет
+независимо развивать функциональные блоки платформы (задачи, дорожные
+карты, турниры, обмен сообщениями и интеллектуальный ассистент).
+
+Взаимодействие между клиентом и сервером построено на двух протоколах:
+REST API (CRUD-операции с задачами, дорожными картами, турнирами и
+посылками) и WebSocket (модуль \texttt{channels}, используемый для
+личных сообщений в реальном времени и описанный в
+подразделе~\ref{subsec:frontend}).
+
+\subsection{Реализация модели данных и слоя хранения}
+
+На основе ER-диаграммы (рисунок~\ref{fig:er_diagram}) для каждой таблицы
+логической модели данных реализована соответствующая модель Django ORM.
+Использование UUID в качестве первичного ключа, выбранное на этапе
+проектирования, реализуется полем \texttt{UUIDField} со значением по
+умолчанию \texttt{uuid4}. В листинге~\ref{lst:user_model} приведена модель
+пользователя, расширяющая стандартную модель \texttt{AbstractUser} полями
+\texttt{role}, \texttt{tournament\_rating}, \texttt{streak} и
+\texttt{last\_active\_date} из таблицы \texttt{users}.
+
+\begin{lstlisting}[language=Python, caption={Модель пользователя (apps/users/models.py)}, label={lst:user_model}]
+class User(AbstractUser):
+    class Role(models.TextChoices):
+        USER = "user", "Пользователь"
+        PREMIUM = "premium", "Премиум-пользователь"
+        ADMIN = "admin", "Администратор"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.USER)
+    is_blocked = models.BooleanField(default=False)
+    tournament_rating = models.IntegerField(default=0)
+    streak = models.IntegerField(default=0)
+    last_active_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_premium(self) -> bool:
+        return self.role in (self.Role.PREMIUM, self.Role.ADMIN)
+\end{lstlisting}
+
+Логика обновления серии активных дней (\textit{streak}), описанная в
+главе 2, реализована отдельной функцией в модуле \texttt{services.py}
+(листинг~\ref{lst:streak}) и вызывается при каждом обращении пользователя
+к своему профилю.
+
+\begin{lstlisting}[language=Python, caption={Обновление серии активных дней (apps/users/services.py)}, label={lst:streak}]
+def register_activity(user: User, today: date | None = None) -> User:
+    today = today or date.today()
+    last_active = user.last_active_date
+
+    if last_active == today:
+        return user
+
+    if last_active == today - timedelta(days=1):
+        user.streak += 1
+    else:
+        user.streak = 1
+
+    user.last_active_date = today
+    user.save(update_fields=["streak", "last_active_date"])
+    return user
+\end{lstlisting}
+
+Дорожная карта (\texttt{roadmaps}) и её узлы (\texttt{roadmap\_nodes})
+образуют дерево за счёт self-referencing внешнего ключа \texttt{parent}
+(листинг~\ref{lst:roadmap_node}): у корневых узлов поле \texttt{parent}
+равно \texttt{NULL}, у остальных — указывает на родительский узел в той
+же таблице.
+
+\begin{lstlisting}[language=Python, caption={Модель узла дорожной карты (apps/roadmaps/models.py)}, label={lst:roadmap_node}]
+class RoadmapNode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    roadmap = models.ForeignKey(Roadmap, on_delete=models.CASCADE, related_name="nodes")
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, related_name="children",
+        null=True, blank=True,
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+\end{lstlisting}
+
+Для остальных таблиц (\texttt{problems}, \texttt{submissions},
+\texttt{tournaments}, \texttt{tournament\_participants},
+\texttt{messages}) реализованы аналогичные модели с полями, типами и
+ограничениями, перечисленными в таблицах~2.1--2.7 главы~2. На основе
+моделей сгенерированы и применены миграции базы данных PostgreSQL
+(\texttt{python manage.py makemigrations} / \texttt{migrate}), что
+завершает выполнение задачи 2.3 «Проектирование модели данных».
+
+\subsection{Реализация системы авторизации и ролевой модели доступа}
+
+Для аутентификации пользователей используется протокол \textbf{JWT}
+(\textit{JSON Web Token}), реализованный библиотекой
+\texttt{djangorestframework-simplejwt}. При успешном входе сервер выдаёт
+пару токенов (\texttt{access} и \texttt{refresh}); access-токен передаётся
+в заголовке \texttt{Authorization} каждого запроса к API, а при его
+истечении клиент автоматически обновляет токен через
+\texttt{/api/auth/token/refresh/} (листинг~\ref{lst:api_client}).
+
+\begin{lstlisting}[language=Python, caption={Перехват 401-ответа и обновление access-токена (src/api/client.js)}, label={lst:api_client}]
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const { config, response } = error;
+    if (response?.status === 401 && !config._retried) {
+      const refresh = localStorage.getItem("refresh_token");
+      if (refresh) {
+        const { data } = await axios.post("/api/auth/token/refresh/", { refresh });
+        localStorage.setItem("access_token", data.access);
+        config._retried = true;
+        config.headers.Authorization = `Bearer ${data.access}`;
+        return client(config);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+\end{lstlisting}
+
+Ролевая модель доступа (\texttt{user}, \texttt{premium}, \texttt{admin}),
+описанная в подразделе 2.1, реализована на уровне поля \texttt{role}
+модели пользователя и набора классов разрешений DRF
+(листинг~\ref{lst:permissions}). Класс \texttt{IsAuthorOrReadOnly}
+разрешает изменение и удаление задач и дорожных карт только их автору
+либо администратору, а класс \texttt{IsPremium} ограничивает доступ к
+ИИ-ассистенту премиум-пользователями и администраторами.
+
+\begin{lstlisting}[language=Python, caption={Классы разрешений ролевой модели (apps/users/permissions.py)}, label={lst:permissions}]
+class IsPremium(BasePermission):
+    """Доступ только для премиум-пользователей и администраторов."""
+
+    def has_permission(self, request, view) -> bool:
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_premium
+        )
+
+
+class IsAuthorOrReadOnly(BasePermission):
+    """Изменять и удалять объект может только его автор или администратор."""
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        if request.method in SAFE_METHODS:
+            return True
+        if request.user.role == request.user.Role.ADMIN:
+            return True
+        return getattr(obj, "author_id", None) == request.user.id
+\end{lstlisting}
+
+\subsection{Реализация модуля проверки решений и ИИ-ассистента}
+
+Отправка решения пользователем обрабатывается эндпоинтом
+\texttt{/api/submissions/}: созданная запись \texttt{Submission}
+передаётся в модуль проверки решений (\textit{judge}), который
+сопоставляет результат выполнения программы с закрытым набором тестов
+задачи и заполняет поля \texttt{tests\_passed}, \texttt{verdict} и
+\texttt{is\_accepted}. Если посылка отправлена в рамках турнира, для
+неё дополнительно пересчитывается турнирный балл по формуле~2.1 и
+итоговый рейтинг участника по формуле~2.2 (листинг~\ref{lst:scoring}).
+
+\begin{lstlisting}[language=Python, caption={Расчёт турнирного балла и рейтинга (apps/tournaments/services.py)}, label={lst:scoring}]
+def submission_score(submission: Submission) -> float:
+    """S = T_passed / T_total * 100"""
+    if submission.problem.total_tests == 0:
+        return 0.0
+    return submission.tests_passed / submission.problem.total_tests * 100
+
+
+def recalculate_rating(participant: TournamentParticipant) -> TournamentParticipant:
+    """R = sum(S_j) -- лучший балл по каждой задаче"""
+    submissions = Submission.objects.filter(
+        tournament=participant.tournament, user=participant.user
+    )
+    best_score_per_problem = {}
+    for submission in submissions:
+        score = submission_score(submission)
+        best_score_per_problem[submission.problem_id] = max(
+            best_score_per_problem.get(submission.problem_id, 0), score
+        )
+
+    participant.total_score = round(sum(best_score_per_problem.values()))
+    participant.save(update_fields=["total_score"])
+    return participant
+\end{lstlisting}
+
+Интеллектуальный анализ решений (задача 1.6 «Реализовать интеллектуальный
+анализ решений») реализован в виде интеграции с \textbf{DeepSeek API}.
+Сервис \texttt{ai\_assistant.services.ask\_assistant} формирует запрос,
+включающий условие задачи, текущий код пользователя (если он указан) и
+системную инструкцию, запрещающую ассистенту раскрывать готовое решение
+(листинг~\ref{lst:ai_service}). Доступ к эндпоинту \texttt{/api/ai-assistant/ask/}
+ограничен классом разрешения \texttt{IsPremium}.
+
+\begin{lstlisting}[language=Python, caption={Запрос к ИИ-ассистенту (apps/ai\_assistant/services.py)}, label={lst:ai_service}]
+SYSTEM_PROMPT = (
+    "Ты -- ассистент по подготовке к олимпиадам по программированию. "
+    "Направляй пользователя к решению задачи наводящими вопросами и "
+    "подсказками, не приводя готовый код и не раскрывая решение напрямую."
+)
+
+def ask_assistant(problem_description: str, user_code: str | None, question: str) -> str:
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    context = f"Условие задачи:\n{problem_description}"
+    if user_code:
+        context += f"\n\nТекущий код пользователя:\n{user_code}"
+    messages.append({"role": "user", "content": context})
+    messages.append({"role": "user", "content": question})
+
+    response = requests.post(
+        settings.DEEPSEEK_API_URL,
+        headers={"Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}"},
+        json={"model": "deepseek-chat", "messages": messages},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+\end{lstlisting}
+
+\subsection{Разработка клиентской части}
+\label{subsec:frontend}
+
+Клиентская часть реализована на \textbf{React.js} с использованием
+\textit{Vite} и маршрутизации \texttt{react-router-dom}. Структура
+страниц соответствует функциональным блокам, описанным в подразделе 2.2:
+список и страница задачи со встроенным редактором кода, дорожные карты,
+турниры и личные сообщения.
+
+Страница задачи объединяет три компонента: условие задачи, встроенную
+IDE на базе \texttt{@monaco-editor/react} с выбором языка
+(Python, C++, C, Go, Java) и чат ИИ-ассистента. Компонент
+\texttt{AIAssistantChat} (листинг~\ref{lst:ai_chat}) скрывает форму
+запроса для пользователей с ролью \texttt{user}, реализуя на клиенте то
+же ограничение доступа, что и серверный класс \texttt{IsPremium}.
+
+\begin{lstlisting}[language=JavaScript, caption={Компонент чата с ИИ-ассистентом (src/components/AIAssistantChat.jsx)}, label={lst:ai_chat}]
+const AIAssistantChat = ({ problemId, code }) => {
+  const { user } = useAuth();
+  const [question, setQuestion] = useState("");
+  const [history, setHistory] = useState([]);
+
+  if (!user || user.role === "user") {
+    return (
+      <div className="ai-assistant ai-assistant--locked">
+        ИИ-ассистент доступен только премиум-пользователям.
+      </div>
+    );
+  }
+
+  const sendQuestion = async () => {
+    setHistory((prev) => [...prev, { role: "user", content: question }]);
+    const { data } = await client.post("/ai-assistant/ask/", {
+      problem: problemId,
+      question,
+      code,
+    });
+    setHistory((prev) => [...prev, { role: "assistant", content: data.answer }]);
+    setQuestion("");
+  };
+  // ...
+};
+\end{lstlisting}
+
+Дорожная карта на клиенте отображается рекурсивным компонентом
+\texttt{RoadmapTree} (листинг~\ref{lst:roadmap_tree}), который повторяет
+структуру дерева узлов \texttt{roadmap\_nodes}: каждый узел может
+содержать список дочерних узлов \texttt{children}, полученных от сервера
+в виде вложенного JSON.
+
+\begin{lstlisting}[language=JavaScript, caption={Рекурсивный рендеринг дерева дорожной карты (src/components/RoadmapTree.jsx)}, label={lst:roadmap_tree}]
+const RoadmapNode = ({ node }) => (
+  <li className="roadmap-tree__node">
+    <span>{node.title}</span>
+    {node.children?.length > 0 && (
+      <ul>
+        {node.children.map((child) => (
+          <RoadmapNode key={child.id} node={child} />
+        ))}
+      </ul>
+    )}
+  </li>
+);
+\end{lstlisting}
+
+Личные сообщения реализованы поверх WebSocket-соединения: при открытии
+диалога клиент сначала запрашивает историю сообщений через REST API
+(\texttt{/api/messages/?with=<id>}), а затем подключается к каналу
+\texttt{/ws/chat/<id>/}. На сервере соединение обрабатывается
+асинхронным консьюмером \texttt{ChatConsumer} на базе \texttt{Django
+Channels}: оба собеседника подключаются к одной группе, идентификатор
+которой формируется из отсортированной пары их \texttt{id} (листинг~\ref{lst:chat_consumer}), что
+обеспечивает доставку сообщений в реальном времени без дополнительной
+адресации.
+
+\begin{lstlisting}[language=Python, caption={WebSocket-консьюмер личных сообщений (apps/messaging/consumers.py)}, label={lst:chat_consumer}]
+class ChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        user = self.scope["user"]
+        if not user.is_authenticated:
+            await self.close()
+            return
+
+        self.other_user_id = self.scope["url_route"]["kwargs"]["user_id"]
+        self.room_group_name = "chat_" + "_".join(
+            sorted([str(user.id), str(self.other_user_id)])
+        )
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.accept()
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        message = await self._save_message(
+            self.scope["user"].id, self.other_user_id, data["content"]
+        )
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {"type": "chat_message", "sender_id": str(message.sender_id),
+             "content": message.content, "sent_at": message.sent_at.isoformat()},
+        )
+\end{lstlisting}
+
+Таким образом, на текущем этапе реализованы базовая структура клиентского
+и серверного приложений, модель данных и слой хранения в PostgreSQL,
+ролевая модель доступа на основе JWT, модуль обработки посылок с расчётом
+турнирного рейтинга и интеграция ИИ-ассистента, что соответствует задачам
+2--5, сформулированным в главе 1.

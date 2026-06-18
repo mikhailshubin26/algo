@@ -1,0 +1,91 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: algo_platform
+      POSTGRES_USER: algo_platform
+      POSTGRES_PASSWORD: algo_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  # --- Judge0 CE (self-hosted) ---
+  judge0-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0postgres
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data
+
+  judge0-redis:
+    image: redis:7-alpine
+    volumes:
+      - judge0_redis_data:/data
+
+  judge0-server:
+    image: judge0/judge0:1.13.0
+    environment:
+      REDIS_HOST: judge0-redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: judge0-db
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0postgres
+      SECRET_KEY_BASE: judge0_secret_key_base_change_me_in_production
+      RAILS_ENV: production
+    privileged: true
+    restart: always
+    ports:
+      - "2358:2358"
+    depends_on:
+      - judge0-db
+      - judge0-redis
+
+  judge0-worker:
+    image: judge0/judge0:1.13.0
+    command: ["./scripts/workers"]
+    environment:
+      REDIS_HOST: judge0-redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: judge0-db
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0postgres
+      SECRET_KEY_BASE: judge0_secret_key_base_change_me_in_production
+      RAILS_ENV: production
+    privileged: true
+    restart: always
+    depends_on:
+      - judge0-server
+
+volumes:
+  postgres_data:
+  judge0_postgres_data:
+  judge0_redis_data:
