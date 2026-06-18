@@ -4,6 +4,12 @@ from rest_framework import serializers
 from apps.users.models import User
 
 
+class UserBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username")
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
