@@ -871,12 +871,19 @@ h2 {
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
-.chat-ws-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-left: auto;
+.chat-avatar-wrap {
+  position: relative;
   flex-shrink: 0;
+}
+
+.chat-ws-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
 }
 .chat-ws-dot--on  { background: #22c55e; }
 .chat-ws-dot--off {

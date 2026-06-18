@@ -208,10 +208,12 @@ const MessagesPage = () => {
         ) : (
           <>
             <div className="chat-main__header">
-              <span className="chat-conv__avatar chat-conv__avatar--lg">{peer.username[0].toUpperCase()}</span>
+              <div className="chat-avatar-wrap">
+                <span className="chat-conv__avatar chat-conv__avatar--lg">{peer.username[0].toUpperCase()}</span>
+                <span className={`chat-ws-dot ${chatReady ? "chat-ws-dot--on" : "chat-ws-dot--off"}`}
+                  title={chatReady ? "Подключено" : "Переподключение..."} />
+              </div>
               <span className="chat-main__peer-name">{peer.username}</span>
-              <span className={`chat-ws-dot ${chatReady ? "chat-ws-dot--on" : "chat-ws-dot--off"}`}
-                title={chatReady ? "Подключено" : "Переподключение..."} />
             </div>
 
             <div className="chat-messages">
