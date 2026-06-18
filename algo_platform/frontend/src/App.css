@@ -871,6 +871,23 @@ h2 {
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
+.chat-ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.chat-ws-dot--on  { background: #22c55e; }
+.chat-ws-dot--off {
+  background: #f59e0b;
+  animation: chat-ws-pulse 1s ease-in-out infinite;
+}
+@keyframes chat-ws-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
 .chat-main__peer-name {
   font-size: 16px;
   font-weight: 600;

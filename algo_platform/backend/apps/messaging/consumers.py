@@ -7,13 +7,6 @@ from apps.messaging.models import Message
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
-    """Канал личных сообщений между двумя пользователями.
-
-    Группа канала формируется из идентификаторов обоих участников
-    (отсортированных), поэтому оба пользователя подключаются к одной
-    и той же группе и получают сообщения в реальном времени.
-    """
-
     async def connect(self):
         user = self.scope["user"]
         if not user.is_authenticated:
@@ -38,15 +31,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         message = await self._save_message(user.id, self.other_user_id, content)
 
+        payload = {
+            "id": str(message.id),
+            "sender_id": str(user.id),
+            "sender_username": user.username,
+            "content": message.content,
+            "sent_at": message.sent_at.isoformat(),
+        }
+
+        # broadcast to both participants in the chat group
         await self.channel_layer.group_send(
             self.room_group_name,
-            {
-                "type": "chat_message",
-                "id": str(message.id),
-                "sender_id": str(message.sender_id),
-                "content": message.content,
-                "sent_at": message.sent_at.isoformat(),
-            },
+            {"type": "chat_message", **payload},
+        )
+
+        # also notify the receiver's inbox so they see it even if chat isn't open
+        await self.channel_layer.group_send(
+            f"inbox_{self.other_user_id}",
+            {"type": "new_message", **payload},
         )
 
     async def chat_message(self, event):
@@ -57,3 +59,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return Message.objects.create(
             sender_id=sender_id, receiver_id=receiver_id, content=content
         )
+
+
+class InboxConsumer(AsyncWebsocketConsumer):
+    """Personal inbox — connected on page load, receives all incoming messages."""
+
+    async def connect(self):
+        user = self.scope["user"]
+        if not user.is_authenticated:
+            await self.close()
+            return
+        self.group_name = f"inbox_{user.id}"
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def new_message(self, event):
+        await self.send(text_data=json.dumps(event))
