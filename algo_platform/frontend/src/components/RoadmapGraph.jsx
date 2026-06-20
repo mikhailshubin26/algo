@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ReactFlow,
   Handle,
@@ -40,24 +40,30 @@ function applyDagreLayout(flat, edges) {
   }));
 }
 
-const RoadmapNodeCard = ({ data }) => (
-  <div className="rf-node">
-    <Handle type="target" position={Position.Top} className="rf-handle" />
-    <div className="rf-node__title">{data.title}</div>
-    {data.description && <p className="rf-node__desc">{data.description}</p>}
-    {data.problems?.length > 0 && (
-      <div className="rf-node__problems">
-        {data.problems.map((p) => (
-          <Link key={p.id} to={`/problems/${p.id}`} className="rf-node__problem-link"
-            onClick={(e) => e.stopPropagation()}>
-            {p.title}
-          </Link>
-        ))}
-      </div>
-    )}
-    <Handle type="source" position={Position.Bottom} className="rf-handle" />
-  </div>
-);
+const RoadmapNodeCard = ({ data }) => {
+  const navigate = useNavigate();
+  return (
+    <div className="rf-node">
+      <Handle type="target" position={Position.Top} className="rf-handle" />
+      <div className="rf-node__title">{data.title}</div>
+      {data.description && <p className="rf-node__desc">{data.description}</p>}
+      {data.problems?.length > 0 && (
+        <div className="rf-node__problems">
+          {data.problems.map((p) => (
+            <button
+              key={p.id}
+              className="rf-node__problem-link nodrag nopan"
+              onClick={() => navigate(`/problems/${p.id}`)}
+            >
+              {p.title}
+            </button>
+          ))}
+        </div>
+      )}
+      <Handle type="source" position={Position.Bottom} className="rf-handle" />
+    </div>
+  );
+};
 
 const nodeTypes = { roadmapNode: RoadmapNodeCard };
 

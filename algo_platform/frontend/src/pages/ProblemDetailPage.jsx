@@ -1,6 +1,6 @@
 import Editor from "@monaco-editor/react";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import AIAssistantChat from "../components/AIAssistantChat";
 import client from "../api/client";
 
@@ -14,6 +14,8 @@ const LANGUAGES = [
 
 const ProblemDetailPage = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const tournamentId = searchParams.get("tournament");
   const [problem, setProblem] = useState(null);
   const [language, setLanguage] = useState("python");
   const [code, setCode] = useState("");
@@ -31,6 +33,7 @@ const ProblemDetailPage = () => {
         problem: id,
         language,
         source_code: code,
+        ...(tournamentId ? { tournament: tournamentId } : {}),
       });
       setResult(data);
     } finally {
@@ -71,6 +74,9 @@ const ProblemDetailPage = () => {
           theme="vs-dark"
           options={{ fontSize: 14, minimap: { enabled: false }, scrollBeyondLastLine: false }}
         />
+        {tournamentId && (
+          <div className="trn-problem-banner">🏆 Решение засчитывается в турнир</div>
+        )}
         <button onClick={handleSubmit} disabled={submitting}>
           {submitting ? "Проверяется..." : "Отправить решение"}
         </button>

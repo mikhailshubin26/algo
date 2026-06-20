@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import CreateProblemPage from "./pages/CreateProblemPage";
 import CreateRoadmapPage from "./pages/CreateRoadmapPage";
+import CreateTournamentPage from "./pages/CreateTournamentPage";
 import LoginPage from "./pages/LoginPage";
 import MessagesPage from "./pages/MessagesPage";
 import ProblemDetailPage from "./pages/ProblemDetailPage";
@@ -9,6 +10,7 @@ import ProblemsPage from "./pages/ProblemsPage";
 import RegisterPage from "./pages/RegisterPage";
 import RoadmapDetailPage from "./pages/RoadmapDetailPage";
 import RoadmapsPage from "./pages/RoadmapsPage";
+import TournamentDetailPage from "./pages/TournamentDetailPage";
 import TournamentsPage from "./pages/TournamentsPage";
 
 const App = () => (
@@ -23,6 +25,8 @@ const App = () => (
         <Route path="/roadmaps/new" element={<CreateRoadmapPage />} />
         <Route path="/roadmaps/:id" element={<RoadmapDetailPage />} />
         <Route path="/tournaments" element={<TournamentsPage />} />
+        <Route path="/tournaments/new" element={<CreateTournamentPage />} />
+        <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

@@ -1049,6 +1049,189 @@ h2 {
   background: #f8fafc;
 }
 
+.leaderboard__me td { background: #eef2ff !important; font-weight: 600; }
+
+/* ── Tournament cards grid ── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.badge--blue   { background: #e0e7ff; color: #4338ca; }
+.badge--green  { background: #dcfce7; color: #16a34a; }
+.badge--gray   { background: #f1f5f9; color: #64748b; }
+
+.trn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.trn-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.trn-card:hover {
+  box-shadow: 0 6px 24px rgba(79,70,229,0.13);
+  transform: translateY(-2px);
+}
+.trn-card__top { display: flex; justify-content: flex-end; }
+.trn-card__title { font-size: 16px; font-weight: 700; color: #0f172a; }
+.trn-card__meta { font-size: 12px; color: #64748b; display: flex; flex-direction: column; gap: 2px; }
+.trn-card__footer { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 13px; }
+.trn-card__participants { color: #64748b; }
+.trn-card__joined { color: #16a34a; font-weight: 600; }
+
+/* ── Tournament detail ── */
+.trn-detail { max-width: 860px; }
+.trn-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.trn-detail__meta { font-size: 13px; color: #64748b; margin-top: 6px; }
+
+.trn-joined-badge {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ── Stage progress bar ── */
+.trn-stage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.trn-stage-bar__info { display: flex; align-items: center; gap: 14px; }
+.trn-stage-bar__label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; }
+.trn-stage-bar__steps { display: flex; gap: 6px; }
+.trn-step {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: #94a3b8;
+  background: #f8fafc;
+}
+.trn-step--done  { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.trn-step--active { background: #fff; border-color: #4f46e5; color: #4f46e5; box-shadow: 0 0 0 3px #e0e7ff; }
+
+.trn-timer {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+  letter-spacing: -1px;
+}
+.trn-timer--expired { color: #dc2626; }
+
+/* ── Tabs ── */
+.trn-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+.trn-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s;
+}
+.trn-tab:hover { color: #4f46e5; }
+.trn-tab--active { color: #4f46e5; border-bottom-color: #4f46e5; }
+
+/* ── Problem picker (creator) ── */
+.trn-picker { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+.trn-picker h3 { font-size: 15px; color: #0f172a; margin-bottom: 16px; }
+.trn-picker__stages { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.trn-stage-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid #e2e8f0;
+  background: #f8fafc; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all 0.15s;
+}
+.trn-stage-btn:hover { border-color: #818cf8; color: #4f46e5; }
+.trn-stage-btn--active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.trn-picker__assigned { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-height: 36px; }
+.trn-picker__empty { font-size: 13px; color: #94a3b8; }
+.trn-picker__item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: #f8fafc; border-radius: 8px; font-size: 14px;
+}
+.trn-picker__remove {
+  background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0 4px;
+  transition: color 0.15s;
+}
+.trn-picker__remove:hover { color: #dc2626; }
+.trn-picker__add { display: flex; gap: 10px; align-items: center; }
+.trn-picker__add select {
+  flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 14px; font-family: inherit; background: #fff; outline: none;
+}
+.trn-picker__add select:focus { border-color: #818cf8; }
+
+/* ── Stage problems list ── */
+.trn-stage-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 14px; }
+.trn-problem-list { display: flex; flex-direction: column; gap: 10px; }
+.trn-problem-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  text-decoration: none; color: inherit; transition: box-shadow 0.2s, border-color 0.2s;
+}
+.trn-problem-card:hover { box-shadow: 0 4px 16px rgba(79,70,229,0.12); border-color: #818cf8; }
+.trn-problem-card__num {
+  width: 28px; height: 28px; border-radius: 50%; background: #e0e7ff; color: #4338ca;
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.trn-problem-card__title { flex: 1; font-size: 15px; font-weight: 600; }
+.trn-problem-card__arrow { color: #94a3b8; font-size: 16px; }
+
+/* ── Waiting / empty states ── */
+.trn-waiting {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 48px 24px; background: #fff; border: 2px dashed #e2e8f0; border-radius: 14px;
+  color: #64748b; text-align: center;
+}
+.trn-leaderboard { margin-top: 4px; }
+
+/* ── Tournament banner on problem page ── */
+.trn-problem-banner {
+  padding: 8px 14px; border-radius: 8px; background: #fef3c7; color: #92400e;
+  font-size: 13px; font-weight: 600; margin-bottom: 10px; border: 1px solid #fde68a;
+}
+
 /* ── Roadmaps Grid ── */
 .roadmaps-grid {
   display: grid;
@@ -1459,10 +1642,12 @@ h2 {
   color: #4f46e5;
   font-size: 11px;
   font-weight: 600;
-  text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
   border: 1px solid #c4b5fd;
   transition: background 0.15s, color 0.15s;
   align-self: flex-start;
+  pointer-events: all;
 }
 
 .rf-node__problem-link::before { content: "→"; }
