@@ -5,25 +5,24 @@
 \subsection{Архитектура приложения и структура проекта}
 
 В соответствии с архитектурой, спроектированной в главе 2, приложение
-реализовано как клиент-серверная система, состоящая из трёх компонентов:
-клиентского приложения на \textbf{React.js}, серверного приложения на
-\textbf{Django} с REST API (\textit{Django REST Framework}) и СУБД
-\textbf{PostgreSQL}. Для упрощения развёртывания и обеспечения
-одинакового окружения на всех этапах разработки компоненты системы
-оформлены в виде отдельных контейнеров \textbf{Docker}, объединённых
-файлом \texttt{docker-compose.yml} (листинг~\ref{lst:compose}).
+реализовано как клиент-серверная система, состоящая из клиентского
+приложения на \textbf{React.js}, серверного приложения на
+\textbf{Django} с REST API (\textit{Django REST Framework}), СУБД
+\textbf{PostgreSQL} и подсистемы автоматической проверки решений на базе
+самостоятельно развёрнутого сервиса \textbf{Judge0 CE}. Для упрощения
+развёртывания и обеспечения одинакового окружения на всех этапах
+разработки компоненты системы оформлены в виде отдельных контейнеров
+\textbf{Docker}, объединённых файлом \texttt{docker-compose.yml}
+(листинг~\ref{lst:compose}).
 
-\begin{lstlisting}[language=, caption={Конфигурация контейнеров проекта (docker-compose.yml)}, label={lst:compose}]
+\begin{lstlisting}[language=, caption={Конфигурация контейнеров проекта (docker-compose.yml, сокращённо)}, label={lst:compose}]
 services:
   db:
     image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: algo_platform
-      POSTGRES_USER: algo_platform
-      POSTGRES_PASSWORD: algo_platform
+    env_file: ./backend/.env       # POSTGRES_DB/USER/PASSWORD
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine          # channel layer для Django Channels
 
   backend:
     build: ./backend
@@ -35,6 +34,21 @@ services:
     build: ./frontend
     ports: ["5173:5173"]
     depends_on: [backend]
+
+  # --- Подсистема проверки решений (самостоятельно развёрнутый Judge0 CE) ---
+  judge0-db:
+    image: postgres:16-alpine
+  judge0-redis:
+    image: redis:7-alpine          # внутренняя очередь задач Judge0
+  judge0-server:
+    image: judge0/judge0:1.13.0
+    privileged: true                # требуется для sandbox-изолятора isolate
+    depends_on: [judge0-db, judge0-redis]
+  judge0-worker:
+    image: judge0/judge0:1.13.0
+    command: ["./scripts/workers"]
+    privileged: true
+    depends_on: [judge0-server]
 \end{lstlisting}
 
 Серверная часть разделена на отдельные Django-приложения, каждое из
@@ -50,7 +64,11 @@ services:
 REST API (CRUD-операции с задачами, дорожными картами, турнирами и
 посылками) и WebSocket (модуль \texttt{channels}, используемый для
 личных сообщений в реальном времени и описанный в
-подразделе~\ref{subsec:frontend}).
+подразделе~\ref{subsec:frontend}). Поскольку стандартный сервер
+разработки Django (\texttt{runserver}) не поддерживает протокол
+WebSocket, серверное приложение запускается через ASGI-сервер
+\textbf{Daphne}, что является обязательным условием работы модуля
+личных сообщений.
 
 \subsection{Реализация модели данных и слоя хранения}
 
@@ -122,22 +140,64 @@ class RoadmapNode(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
+    problems = models.ManyToManyField(
+        "problems.Problem", blank=True, related_name="roadmap_nodes"
+    )
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 \end{lstlisting}
 
+Дополнительно каждый узел дорожной карты связан отношением
+\textit{многие-ко-многим} (\texttt{problems}) с задачами платформы: один
+узел может ссылаться на несколько задач, а одна задача может входить в
+несколько узлов разных дорожных карт. Это позволяет переходить от узла
+карты непосредственно к решению связанной с ним задачи.
+
 Для остальных таблиц (\texttt{problems}, \texttt{submissions},
 \texttt{tournaments}, \texttt{tournament\_participants},
 \texttt{messages}) реализованы аналогичные модели с полями, типами и
-ограничениями, перечисленными в таблицах~2.1--2.7 главы~2. На основе
-моделей сгенерированы и применены миграции базы данных PostgreSQL
-(\texttt{python manage.py makemigrations} / \texttt{migrate}), что
-завершает выполнение задачи 2.3 «Проектирование модели данных».
+ограничениями, перечисленными в таблицах~2.1--2.7 главы~2.
+
+Распределение задач турнира по этапам реализовано отдельной моделью
+\texttt{TournamentProblem}, не входившей в исходную логическую модель
+данных и добавленной в ходе реализации: она связывает турнир, задачу и
+номер этапа, на котором задача предлагается участникам.
+
+\begin{lstlisting}[language=Python, caption={Модель задачи этапа турнира (apps/tournaments/models.py)}, label={lst:tournament_problem}]
+class TournamentProblem(models.Model):
+    """Задача этапа турнира."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="stage_problems")
+    problem = models.ForeignKey("problems.Problem", on_delete=models.CASCADE)
+    stage = models.PositiveIntegerField()
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("stage", "order")
+        unique_together = ("tournament", "problem", "stage")
+\end{lstlisting}
+
+Модель \texttt{Tournament} дополнена полем \texttt{current\_stage},
+хранящим номер текущего этапа турнира со статусом \texttt{ongoing}, что
+позволяет определить, какой набор задач из \texttt{stage\_problems}
+показывать участникам в данный момент, и рассчитать оставшееся время
+этапа на клиенте как разницу между текущим временем и моментом начала
+этапа (\texttt{started\_at + (current\_stage - 1) * stage\_duration\_s}).
+Переход между этапами и завершение турнира выполняются создателем
+турнира через действия \texttt{start}, \texttt{next\_stage} и
+\texttt{finish} API-эндпоинта \texttt{/api/tournaments/\{id\}/}, доступные
+только при выполнении соответствующих условий (например, \texttt{start}
+— только для турнира со статусом \texttt{pending}).
+
+На основе моделей сгенерированы и применены миграции базы данных
+PostgreSQL (\texttt{python manage.py makemigrations} / \texttt{migrate}),
+что завершает выполнение задачи 2.3 «Проектирование модели данных».
 
 \subsection{Реализация системы авторизации и ролевой модели доступа}
 
 Для аутентификации пользователей используется протокол \textbf{JWT}
-(\textit{JSON Web Token}), реализованный библиотекой
+(\textit{JSON Web Token})~\cite{rfc7519_jwt}, реализованный библиотекой
 \texttt{djangorestframework-simplejwt}. При успешном входе сервер выдаёт
 пару токенов (\texttt{access} и \texttt{refresh}); access-токен передаётся
 в заголовке \texttt{Authorization} каждого запроса к API, а при его
@@ -166,7 +226,7 @@ client.interceptors.response.use(
 
 Ролевая модель доступа (\texttt{user}, \texttt{premium}, \texttt{admin}),
 описанная в подразделе 2.1, реализована на уровне поля \texttt{role}
-модели пользователя и набора классов разрешений DRF
+модели пользователя и набора классов разрешений DRF~\cite{drf_docs}
 (листинг~\ref{lst:permissions}). Класс \texttt{IsAuthorOrReadOnly}
 разрешает изменение и удаление задач и дорожных карт только их автору
 либо администратору, а класс \texttt{IsPremium} ограничивает доступ к
@@ -202,9 +262,38 @@ class IsAuthorOrReadOnly(BasePermission):
 передаётся в модуль проверки решений (\textit{judge}), который
 сопоставляет результат выполнения программы с закрытым набором тестов
 задачи и заполняет поля \texttt{tests\_passed}, \texttt{verdict} и
-\texttt{is\_accepted}. Если посылка отправлена в рамках турнира, для
-неё дополнительно пересчитывается турнирный балл по формуле~2.1 и
-итоговый рейтинг участника по формуле~2.2 (листинг~\ref{lst:scoring}).
+\texttt{is\_accepted}.
+
+Проверка решений реализована в виде двухуровневой схемы. Основной путь
+— пакетная отправка всех тестов задачи в самостоятельно развёрнутый
+сервис \textbf{Judge0 CE} (\texttt{/submissions/batch}) с последующим
+опросом результата (\textit{polling}) до получения окончательного
+статуса по каждому тесту. Если Judge0 недоступен по сети или возвращает
+\textit{Internal Error} (статус 13) для всех тестов подряд — ситуация,
+типичная при работе изолятора \texttt{isolate} в контейнеризованной
+среде без поддержки нужных возможностей ядра, — модуль переключается на
+локальный запуск решения через \texttt{subprocess} с ограничением
+времени выполнения (листинг~\ref{lst:judge_entry}). Такой fallback
+обеспечивает работоспособность проверки решений независимо от
+конкретной среды развёртывания, хотя и поддерживает ограниченный набор
+языков (Python, C, C++) по сравнению с полным набором Judge0.
+
+\begin{lstlisting}[language=Python, caption={Точка входа модуля проверки решений (apps/submissions/judge.py)}, label={lst:judge_entry}]
+def run_submission(submission: Submission) -> Submission:
+    problem = submission.problem
+    test_cases = list(problem.test_cases.order_by("order"))
+
+    results = _run_via_judge0(submission, test_cases)
+
+    if results is None:               # Judge0 недоступен или Internal Error
+        results = _run_via_local(submission, test_cases)
+
+    return _aggregate(submission, results, len(test_cases))
+\end{lstlisting}
+
+Если посылка отправлена в рамках турнира, для неё дополнительно
+пересчитывается турнирный балл по формуле~2.1 и итоговый рейтинг
+участника по формуле~2.2 (листинг~\ref{lst:scoring}).
 
 \begin{lstlisting}[language=Python, caption={Расчёт турнирного балла и рейтинга (apps/tournaments/services.py)}, label={lst:scoring}]
 def submission_score(submission: Submission) -> float:
@@ -308,45 +397,91 @@ const AIAssistantChat = ({ problemId, code }) => {
 };
 \end{lstlisting}
 
-Дорожная карта на клиенте отображается рекурсивным компонентом
-\texttt{RoadmapTree} (листинг~\ref{lst:roadmap_tree}), который повторяет
-структуру дерева узлов \texttt{roadmap\_nodes}: каждый узел может
-содержать список дочерних узлов \texttt{children}, полученных от сервера
-в виде вложенного JSON.
+Дорожная карта на клиенте отображается не списком, а интерактивным
+графом средствами библиотеки \texttt{@xyflow/react} (React Flow):
+дерево узлов \texttt{roadmap\_nodes}, полученное от сервера в виде
+вложенного JSON, преобразуется в плоский список узлов и список связей
+«родитель--потомок», после чего библиотека \texttt{dagre} автоматически
+вычисляет координаты узлов для древовидной раскладки сверху вниз
+(листинг~\ref{lst:roadmap_layout}). Такое представление нагляднее
+отражает структуру предметной области (дорожная карта как граф
+зависимостей тем), чем плоский вложенный список.
 
-\begin{lstlisting}[language=JavaScript, caption={Рекурсивный рендеринг дерева дорожной карты (src/components/RoadmapTree.jsx)}, label={lst:roadmap_tree}]
-const RoadmapNode = ({ node }) => (
-  <li className="roadmap-tree__node">
-    <span>{node.title}</span>
-    {node.children?.length > 0 && (
-      <ul>
-        {node.children.map((child) => (
-          <RoadmapNode key={child.id} node={child} />
-        ))}
-      </ul>
-    )}
-  </li>
-);
+\begin{lstlisting}[language=JavaScript, caption={Автоматическая раскладка графа дорожной карты (src/components/RoadmapGraph.jsx)}, label={lst:roadmap_layout}]
+function applyDagreLayout(flat, edges) {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "TB", nodesep: 80, ranksep: 100 });
+  flat.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
+  edges.forEach(({ source, target }) => g.setEdge(source, target));
+  dagre.layout(g);
+  return flat.map((n) => ({
+    id: n.id,
+    type: "roadmapNode",
+    position: { x: g.node(n.id).x - NODE_W / 2, y: g.node(n.id).y - NODE_H / 2 },
+    data: n,
+  }));
+}
 \end{lstlisting}
+
+Каждый узел графа отрисовывается кастомным компонентом
+\texttt{RoadmapNodeCard}, который дополнительно показывает список
+связанных с узлом задач (поле \texttt{problems} модели
+\texttt{RoadmapNode}) в виде кнопок-ссылок; нажатие на такую кнопку
+переводит пользователя на страницу соответствующей задачи. Поскольку
+React Flow по умолчанию перехватывает события указателя на узлах для
+реализации перетаскивания и панорамирования холста, интерактивным
+элементам внутри узла явно назначены служебные классы \texttt{nodrag} и
+\texttt{nopan}, исключающие их из этой обработки и обеспечивающие
+корректную обработку клика.
 
 Личные сообщения реализованы поверх WebSocket-соединения: при открытии
 диалога клиент сначала запрашивает историю сообщений через REST API
 (\texttt{/api/messages/?with=<id>}), а затем подключается к каналу
-\texttt{/ws/chat/<id>/}. На сервере соединение обрабатывается
-асинхронным консьюмером \texttt{ChatConsumer} на базе \texttt{Django
-Channels}: оба собеседника подключаются к одной группе, идентификатор
-которой формируется из отсортированной пары их \texttt{id} (листинг~\ref{lst:chat_consumer}), что
-обеспечивает доставку сообщений в реальном времени без дополнительной
-адресации.
+\texttt{/ws/chat/<id>/}. Поскольку браузер не может передать
+заголовок \texttt{Authorization} при установке WebSocket-соединения,
+JWT access-токен передаётся через параметр строки запроса
+(\texttt{?token=<access\_token>}) и проверяется собственным
+middleware (листинг~\ref{lst:ws_auth}), которое декодирует токен и
+помещает найденного пользователя в \texttt{scope["user"]} — аналогично
+тому, как это делает стандартный механизм аутентификации DRF для
+обычных HTTP-запросов.
 
-\begin{lstlisting}[language=Python, caption={WebSocket-консьюмер личных сообщений (apps/messaging/consumers.py)}, label={lst:chat_consumer}]
+\begin{lstlisting}[language=Python, caption={Аутентификация WebSocket-соединений по JWT (apps/messaging/middleware.py)}, label={lst:ws_auth}]
+class JWTAuthMiddleware:
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        params = parse_qs(scope.get("query_string", b"").decode())
+        tokens = params.get("token", [])
+        scope["user"] = await _resolve_user(tokens[0]) if tokens else AnonymousUser()
+        return await self.inner(scope, receive, send)
+\end{lstlisting}
+
+На сервере переписка обрабатывается асинхронным консьюмером
+\texttt{ChatConsumer} на базе библиотеки Django Channels~\cite{channels_docs}:
+оба собеседника
+подключаются к одной группе, идентификатор которой формируется из
+отсортированной пары их \texttt{id}, что обеспечивает доставку
+сообщений в реальном времени без дополнительной адресации
+(листинг~\ref{lst:chat_consumer}). Поскольку чат с конкретным
+собеседником открыт у пользователя не всегда, помимо группы диалога
+каждое сообщение дополнительно отправляется в персональную группу
+получателя \texttt{inbox\_<user\_id>}, к которой подключается второй
+консьюмер — \texttt{InboxConsumer}. Он устанавливается один раз при
+загрузке страницы (независимо от того, какой диалог открыт) и позволяет
+показывать уведомления о новых сообщениях от любого пользователя без
+необходимости держать открытыми соединения со всеми возможными
+собеседниками одновременно.
+
+\begin{lstlisting}[language=Python, caption={WebSocket-консьюмеры личных сообщений (apps/messaging/consumers.py)}, label={lst:chat_consumer}]
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         user = self.scope["user"]
         if not user.is_authenticated:
             await self.close()
             return
-
         self.other_user_id = self.scope["url_route"]["kwargs"]["user_id"]
         self.room_group_name = "chat_" + "_".join(
             sorted([str(user.id), str(self.other_user_id)])
@@ -356,18 +491,47 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = await self._save_message(
-            self.scope["user"].id, self.other_user_id, data["content"]
-        )
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {"type": "chat_message", "sender_id": str(message.sender_id),
-             "content": message.content, "sent_at": message.sent_at.isoformat()},
-        )
+        user = self.scope["user"]
+        message = await self._save_message(user.id, self.other_user_id, data["content"])
+        payload = {"id": str(message.id), "sender_id": str(user.id),
+                    "content": message.content, "sent_at": message.sent_at.isoformat()}
+
+        await self.channel_layer.group_send(self.room_group_name, {"type": "chat_message", **payload})
+        # уведомляем инбокс получателя, даже если диалог с ним сейчас не открыт
+        await self.channel_layer.group_send(f"inbox_{self.other_user_id}", {"type": "new_message", **payload})
+
+
+class InboxConsumer(AsyncWebsocketConsumer):
+    """Персональный инбокс — подключается при загрузке страницы."""
+
+    async def connect(self):
+        user = self.scope["user"]
+        if not user.is_authenticated:
+            await self.close()
+            return
+        self.group_name = f"inbox_{user.id}"
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def new_message(self, event):
+        await self.send(text_data=json.dumps(event))
 \end{lstlisting}
+
+На клиенте оба соединения (диалоговое и инбокс) управляются
+пользовательским хуком, который автоматически переподключается при
+разрыве связи с экспоненциальной задержкой (1, 2, 4, до 8 секунд между
+попытками), а при кратковременной недоступности WebSocket отправка
+сообщения временно выполняется через обычный REST-запрос
+\texttt{POST /api/messages/}. Это исключает потерю сообщений и
+необходимость обновления страницы при временных сетевых сбоях.
 
 Таким образом, на текущем этапе реализованы базовая структура клиентского
 и серверного приложений, модель данных и слой хранения в PostgreSQL,
-ролевая модель доступа на основе JWT, модуль обработки посылок с расчётом
-турнирного рейтинга и интеграция ИИ-ассистента, что соответствует задачам
-2--5, сформулированным в главе 1.
+ролевая модель доступа на основе JWT, модуль проверки решений на базе
+самостоятельно развёрнутого Judge0 CE с локальным fallback-запуском,
+многоэтапные турниры с таймером и таблицей лидеров, дорожные карты с
+графовым представлением и привязкой задач к узлам, а также модуль
+личных сообщений в реальном времени на основе Django Channels с
+аутентификацией WebSocket-соединений по JWT и интеграция
+ИИ-ассистента, что соответствует задачам 2--5, сформулированным в
+главе 1.

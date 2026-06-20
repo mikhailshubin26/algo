@@ -7,14 +7,30 @@
 \contentsline {section}{\MakeUppercase []{Глава 2. Проектирование веб-приложения}}{9}{Item.6}%
 \contentsline {subsection}{\numberline {2.1}Анализ целевой аудитории}{9}{subsection.2.1}%
 \contentsline {subsection}{\numberline {2.2}Описание функциональности приложения}{9}{subsection.2.2}%
-\contentsline {subsection}{\numberline {2.3}Проектирование модели данных}{10}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.3}Проектирование модели данных}{11}{subsection.2.3}%
 \contentsline {subsection}{\numberline {2.4}Разработка макетов страниц}{20}{subsection.2.4}%
 \contentsline {section}{\MakeUppercase []{Глава 3. Разработка веб-приложения}}{22}{figure.caption.6}%
 \contentsline {subsection}{\numberline {3.1}Архитектура приложения и структура проекта}{22}{subsection.3.1}%
 \contentsline {subsection}{\numberline {3.2}Реализация модели данных и слоя хранения}{23}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Реализация системы авторизации и ролевой модели доступа}{25}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}Реализация модуля проверки решений и ИИ-ассистента}{26}{subsection.3.4}%
-\contentsline {subsection}{\numberline {3.5}Разработка клиентской части}{28}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.3}Реализация системы авторизации и ролевой модели доступа}{26}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Реализация модуля проверки решений и ИИ-ассистента}{28}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Разработка клиентской части}{30}{subsection.3.5}%
+\contentsline {section}{\MakeUppercase []{Глава 4. Оформление итогов работы}}{36}{lstnumber.14.39}%
+\contentsline {subsection}{\numberline {4.1}Создание Git-репозитория с кодом проекта}{36}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Деплой приложения на хостинг}{37}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Оформление отчёта о проделанной работе}{38}{subsection.4.3}%
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
+\babel@toc {russian}{}\relax 
 \babel@toc {russian}{}\relax 
 \babel@toc {russian}{}\relax 
 \babel@toc {russian}{}\relax 

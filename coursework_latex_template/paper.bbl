@@ -1,4 +1,4 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{10}
 \def\selectlanguageifdefined#1{
 \expandafter\ifx\csname date#1\endcsname\relax
 \else\selectlanguage{#1}\fi}
@@ -34,6 +34,35 @@ React Documentation: Quick Start [{Электронный ресурс}]. "---
 \newblock
   ISBN:~\href{http://isbndb.com/search-all.html?kw=978-5-496-02726-7}{978-5-496-02726-7}.
 
+\bibitem{django_docs}
+\selectlanguageifdefined{russian}
+Django Documentation [{Электронный ресурс}]. "---
+\newblock [{Б.\ м.}~: {б.\ и.}]. "---
+\newblock URL: \BibUrl{https://docs.djangoproject.com/en/5.0/} ({дата
+  обращения}: 10.04.2026).
+
+\bibitem{drf_docs}
+\selectlanguageifdefined{russian}
+Django REST Framework Documentation [{Электронный ресурс}].
+  "---
+\newblock [{Б.\ м.}~: {б.\ и.}]. "---
+\newblock URL: \BibUrl{https://www.django-rest-framework.org/} ({дата
+  обращения}: 12.04.2026).
+
+\bibitem{postgres_docs}
+\selectlanguageifdefined{russian}
+PostgreSQL 16 Documentation [{Электронный ресурс}]. "---
+\newblock [{Б.\ м.}~: {б.\ и.}]. "---
+\newblock URL: \BibUrl{https://www.postgresql.org/docs/16/} ({дата
+  обращения}: 08.04.2026).
+
+\bibitem{docker_docs}
+\selectlanguageifdefined{russian}
+Docker Compose: Overview [{Электронный ресурс}]. "---
+\newblock [{Б.\ м.}~: {б.\ и.}]. "---
+\newblock URL: \BibUrl{https://docs.docker.com/compose/} ({дата
+  обращения}: 18.04.2026).
+
 \bibitem{gost_report}
 \selectlanguageifdefined{russian}
 ГОСТ 7.32-2017. Отчет о
@@ -41,5 +70,17 @@ React Documentation: Quick Start [{Электронный ресурс}]. "---
   Структура и правила оформления [{Текст}].
   "---
 \newblock 2017.
+
+\bibitem{rfc7519_jwt}
+\selectlanguageifdefined{russian}
+\BibEmph{Jones,~M.} RFC 7519: JSON Web Token (JWT) [{Текст}]. "---
+\newblock 2015.
+
+\bibitem{channels_docs}
+\selectlanguageifdefined{russian}
+Django Channels Documentation [{Электронный ресурс}]. "---
+\newblock [{Б.\ м.}~: {б.\ и.}]. "---
+\newblock URL: \BibUrl{https://channels.readthedocs.io/} ({дата
+  обращения}: 27.04.2026).
 
 \end{thebibliography}
