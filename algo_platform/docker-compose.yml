@@ -40,7 +40,7 @@ services:
     environment:
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
-      POSTGRES_PASSWORD: judge0postgres
+      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD}
     volumes:
       - judge0_postgres_data:/var/lib/postgresql/data
 
@@ -58,8 +58,8 @@ services:
       POSTGRES_HOST: judge0-db
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
-      POSTGRES_PASSWORD: judge0postgres
-      SECRET_KEY_BASE: judge0_secret_key_base_change_me_in_production
+      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD}
+      SECRET_KEY_BASE: ${JUDGE0_SECRET_KEY_BASE}
       RAILS_ENV: production
     privileged: true
     restart: always
@@ -76,8 +76,8 @@ services:
       POSTGRES_HOST: judge0-db
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
-      POSTGRES_PASSWORD: judge0postgres
-      SECRET_KEY_BASE: judge0_secret_key_base_change_me_in_production
+      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD}
+      SECRET_KEY_BASE: ${JUDGE0_SECRET_KEY_BASE}
       RAILS_ENV: production
     privileged: true
     restart: always
