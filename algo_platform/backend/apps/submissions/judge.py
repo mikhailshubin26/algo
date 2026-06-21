@@ -11,6 +11,7 @@ Go и Java через Judge0 (на Linux) или возвращают RE.
 
 import base64
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -19,6 +20,8 @@ import requests
 from django.conf import settings
 
 from apps.submissions.models import Submission
+
+_ERROR_OUTPUT_LIMIT = 4000
 
 LANGUAGE_IDS = {
     Submission.Language.PYTHON: 71,
@@ -50,6 +53,29 @@ def _b64(text: str) -> str:
     return base64.b64encode(text.encode()).decode()
 
 
+def _b64decode(value: str | None) -> str | None:
+    if not value:
+        return value
+    try:
+        return base64.b64decode(value).decode(errors="replace")
+    except Exception:
+        return value
+
+
+def _normalize_java_source(source: str) -> str:
+    """Judge0 (language_id=62) сохраняет код в файл Main.java и запускает
+    ``java Main`` — публичный класс обязан называться Main. Студенты обычно
+    называют его Solution/Task и т.п., из-за чего получается NZEC (RE), хотя
+    решение верное. Переименовываем класс, если он ещё не Main."""
+    if re.search(r"\bclass\s+Main\b", source):
+        return source
+    match = re.search(r"\b(?:public\s+)?class\s+(\w+)", source)
+    if not match:
+        return source
+    name = match.group(1)
+    return re.sub(rf"\b{re.escape(name)}\b", "Main", source)
+
+
 def _judge0_headers() -> dict:
     h = {"Content-Type": "application/json"}
     if settings.JUDGE0_API_KEY:
@@ -75,10 +101,14 @@ def _run_via_judge0(submission: Submission, test_cases: list) -> list | None:
     params_b64 = {"base64_encoded": "true"}
     problem = submission.problem
 
+    source_code = submission.source_code
+    if submission.language == Submission.Language.JAVA:
+        source_code = _normalize_java_source(source_code)
+
     batch = {
         "submissions": [
             {
-                "source_code": _b64(submission.source_code),
+                "source_code": _b64(source_code),
                 "language_id": language_id,
                 "stdin": _b64(tc.input_data),
                 "expected_output": _b64(tc.expected_output),
@@ -122,6 +152,10 @@ def _run_via_judge0(submission: Submission, test_cases: list) -> list | None:
 
     if all(r["status"]["id"] == _INTERNAL_ERROR for r in results):
         return None
+
+    for r in results:
+        for key in ("stdout", "stderr", "compile_output", "message"):
+            r[key] = _b64decode(r.get(key))
 
     return results
 
@@ -185,7 +219,7 @@ def _run_one_local(source: str, language: str, stdin: str, time_limit_ms: int) -
 
         stdout = run_result.stdout
         if run_result.returncode != 0:
-            return {"status": {"id": 7}, "stdout": stdout, "time": None, "memory": None}  # RE
+            return {"status": {"id": 7}, "stdout": stdout, "stderr": run_result.stderr, "time": None, "memory": None}  # RE
 
         return {"status": {"id": 3, "stdout_ok": True}, "stdout": stdout, "time": None, "memory": None}
 
@@ -218,6 +252,7 @@ def _aggregate(submission: Submission, results: list, total: int) -> Submission:
     worst_verdict = Submission.Verdict.AC
     max_time_ms = 0
     max_memory_kb = 0
+    error_output = ""
 
     for r in results:
         status_id = r["status"]["id"]
@@ -225,6 +260,7 @@ def _aggregate(submission: Submission, results: list, total: int) -> Submission:
             tests_passed += 1
         elif worst_verdict == Submission.Verdict.AC:
             worst_verdict = STATUS_MAP.get(status_id, Submission.Verdict.RE)
+            error_output = (r.get("compile_output") or r.get("stderr") or r.get("message") or "")[:_ERROR_OUTPUT_LIMIT]
 
         if r.get("time"):
             max_time_ms = max(max_time_ms, int(float(r["time"]) * 1000))
@@ -236,7 +272,10 @@ def _aggregate(submission: Submission, results: list, total: int) -> Submission:
     submission.verdict = Submission.Verdict.AC if submission.is_accepted else worst_verdict
     submission.exec_time_ms = max_time_ms or None
     submission.memory_kb = max_memory_kb or None
-    submission.save(update_fields=["tests_passed", "is_accepted", "verdict", "exec_time_ms", "memory_kb"])
+    submission.error_output = error_output
+    submission.save(
+        update_fields=["tests_passed", "is_accepted", "verdict", "exec_time_ms", "memory_kb", "error_output"]
+    )
     return submission
 
 

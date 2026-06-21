@@ -18,6 +18,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "verdict",
             "exec_time_ms",
             "memory_kb",
+            "error_output",
             "submitted_at",
         )
         read_only_fields = (
@@ -28,5 +29,6 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "verdict",
             "exec_time_ms",
             "memory_kb",
+            "error_output",
             "submitted_at",
         )

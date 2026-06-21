@@ -86,6 +86,12 @@ const ProblemDetailPage = () => {
             {result.exec_time_ms && <span style={{marginLeft:12, fontWeight:400, opacity:0.8}}>{result.exec_time_ms} мс</span>}
           </div>
         )}
+        {result?.error_output && (
+          <details className="problem-page__error-output">
+            <summary>Вывод ошибки</summary>
+            <pre>{result.error_output}</pre>
+          </details>
+        )}
       </div>
     </div>
   );

@@ -41,6 +41,7 @@ class Submission(models.Model):
     verdict = models.CharField(max_length=16, choices=Verdict.choices, default=Verdict.PENDING)
     exec_time_ms = models.PositiveIntegerField(null=True, blank=True)
     memory_kb = models.PositiveIntegerField(null=True, blank=True)
+    error_output = models.TextField(blank=True, default="")
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
